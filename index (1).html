@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chord Ear Trainer — 和音聴き分けトレーニング</title>
+<meta name="description" content="和音を聞いてコードの種類を当てる耳トレ。誤答したコードをその場で鳴らし比べできる、1画面完結の聴音トレーナー。">
+<meta name="theme-color" content="#12141b">
+<meta property="og:title" content="Chord Ear Trainer">
+<meta property="og:description" content="和音を聞いてコードを当てる耳トレ。誤答をその場で鳴らし比べ。">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2312141b'/><rect x='6' y='7' width='4' height='18' rx='1' fill='%23e9ebf2'/><rect x='11' y='7' width='4' height='18' rx='1' fill='%23e9ebf2'/><rect x='16' y='7' width='4' height='18' rx='1' fill='%238e9bff'/><rect x='21' y='7' width='4' height='18' rx='1' fill='%23e9ebf2'/></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%2312141b'/><rect x='16' y='7' width='4' height='18' rx='1' fill='%238e9bff'/></svg>">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12141b;
+    --panel:#1b1f29;
+    --panel-2:#232836;
+    --line:#333a4c;
+    --text:#e7e9f0;
+    --muted:#8990a6;
+    --accent:#8e9bff;
+    --ok:#5fd6a4;
+    --ng:#f2788f;
+    --white-key:#e9ebf2;
+    --black-key:#20242f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:"Zen Kaku Gothic New",system-ui,sans-serif;
+    min-height:100vh;
+    padding:24px 16px 64px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:880px;margin:0 auto}
+
+  header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+  h1{
+    font-family:"JetBrains Mono",monospace;
+    font-size:20px;letter-spacing:-.02em;font-weight:700;
+  }
+  h1 .dim{color:var(--muted);font-weight:400}
+  .sub{color:var(--muted);font-size:12px}
+
+  .stage{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    margin-bottom:16px;
+  }
+
+  /* ---- keyboard ---- */
+  .kb{width:100%;height:104px;display:block;margin-bottom:16px;border-radius:8px;overflow:hidden}
+  .kb rect.w{fill:var(--white-key);stroke:#aeb4c4;stroke-width:1}
+  .kb rect.b{fill:var(--black-key);stroke:#0c0e13;stroke-width:1}
+  .kb rect.on{fill:var(--accent)}
+  .kb rect.root{fill:#c9d0ff}
+  .kb text{font-family:"JetBrains Mono",monospace;font-size:8px;fill:#7a8194}
+
+  /* ---- prompt ---- */
+  .prompt{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .rootbadge{
+    font-family:"JetBrains Mono",monospace;
+    font-size:34px;font-weight:700;letter-spacing:-.03em;
+    background:var(--panel-2);border:1px solid var(--line);
+    border-radius:10px;padding:6px 16px;min-width:86px;text-align:center;
+  }
+  .rootbadge small{display:block;font-size:9px;color:var(--muted);font-weight:400;letter-spacing:.08em;font-family:"Zen Kaku Gothic New",sans-serif}
+  .verdict{font-family:"JetBrains Mono",monospace;font-size:22px;font-weight:700}
+  .verdict.ok{color:var(--ok)} .verdict.ng{color:var(--ng)}
+  .verdict .note{display:block;font-size:11px;color:var(--muted);font-weight:400;font-family:"Zen Kaku Gothic New",sans-serif;margin-top:2px}
+
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  button{
+    font-family:inherit;font-size:13px;color:var(--text);
+    background:var(--panel-2);border:1px solid var(--line);
+    border-radius:8px;padding:9px 14px;cursor:pointer;
+    transition:background .12s,border-color .12s,transform .04s;
+  }
+  button:hover:not(:disabled){background:#2c3243;border-color:#4a5268}
+  button:active:not(:disabled){transform:translateY(1px)}
+  button:disabled{opacity:.35;cursor:default}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#12141b;font-weight:700}
+  button.primary:hover{background:#a3aeff}
+  .kbd{font-family:"JetBrains Mono",monospace;font-size:10px;color:var(--muted);margin-left:6px}
+
+  /* ---- answers ---- */
+  .answers{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px}
+  .answers button{font-family:"JetBrains Mono",monospace;font-weight:700;padding:12px 6px}
+  .answers button.correct{background:var(--ok);border-color:var(--ok);color:#12141b}
+  .answers button.wrong{background:var(--ng);border-color:var(--ng);color:#12141b}
+  .answers.audition button{cursor:pointer;position:relative}
+  .answers.audition button::after{content:"▶";position:absolute;top:3px;right:5px;font-size:8px;opacity:.5}
+  .answers.audition button.playing{outline:2px solid var(--accent);outline-offset:1px}
+  .roots{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}
+  .roots button{font-family:"JetBrains Mono",monospace;padding:8px 4px;font-size:12px}
+  .roots button.sel{background:var(--accent);border-color:var(--accent);color:#12141b;font-weight:700}
+  .lbl{font-size:11px;color:var(--muted);letter-spacing:.08em;margin:0 0 6px}
+
+  /* ---- settings ---- */
+  details{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 20px;margin-bottom:16px}
+  summary{cursor:pointer;font-size:13px;color:var(--muted);list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸ ";display:inline-block;transition:transform .15s}
+  details[open] summary::before{content:"▾ "}
+  .group{margin-top:14px}
+  .group h3{font-size:11px;color:var(--muted);letter-spacing:.1em;font-weight:500;margin-bottom:8px;display:flex;gap:8px;align-items:center}
+  .group h3 button{padding:2px 7px;font-size:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{
+    font-family:"JetBrains Mono",monospace;font-size:12px;
+    padding:6px 10px;border:1px solid var(--line);border-radius:99px;
+    background:transparent;color:var(--muted);cursor:pointer;user-select:none;
+  }
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#12141b;font-weight:700}
+  .opts{display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;font-size:13px}
+  .opts label{display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--muted)}
+  .opts select{background:var(--panel-2);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-family:inherit;font-size:13px}
+
+  /* ---- stats ---- */
+  .stats{display:flex;gap:24px;flex-wrap:wrap;align-items:baseline;padding:14px 20px;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+  .stat b{font-family:"JetBrains Mono",monospace;font-size:20px}
+  .stat span{font-size:11px;color:var(--muted);margin-left:5px}
+  .weak{font-size:12px;color:var(--muted);margin-left:auto;font-family:"JetBrains Mono",monospace}
+  .weak em{color:var(--ng);font-style:normal}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Chord Ear Trainer <span class="dim">/ root position only</span></h1>
+    <span class="sub">Space = 再生・リプレイ / Enter = 次へ</span>
+  </header>
+
+  <div class="stage">
+    <svg class="kb" id="kb" viewBox="0 0 1050 104" preserveAspectRatio="none"></svg>
+
+    <div class="prompt">
+      <div class="rootbadge" id="rootBadge">–<small id="rootLbl">ROOT</small></div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+
+    <div class="btnrow">
+      <button class="primary" id="playBtn">▶ 再生</button>
+      <button id="nextBtn" disabled>次の問題 <span class="kbd">Enter</span></button>
+      <button id="arpBtn">分散で確認</button>
+      <button id="rootLockBtn">ルート: ランダム</button>
+    </div>
+
+    <div id="rootPick" style="display:none">
+      <p class="lbl">ROOT</p>
+      <div class="roots" id="roots"></div>
+    </div>
+
+    <p class="lbl">QUALITY</p>
+    <div class="answers" id="answers"></div>
+  </div>
+
+  <details>
+    <summary>出題設定</summary>
+    <div id="groups"></div>
+    <div class="opts">
+      <label>鳴らし方
+        <select id="mode">
+          <option value="block">同時（ブロック）</option>
+          <option value="arp">分散（アルペジオ）</option>
+          <option value="both">ランダム</option>
+        </select>
+      </label>
+      <label>出題形式
+        <select id="quiz">
+          <option value="quality">ルートは表示（クオリティのみ当てる）</option>
+          <option value="full">ルートも当てる（フルネーム）</option>
+        </select>
+      </label>
+      <label style="display:none"><input type="checkbox" id="fixedRoot"></label>
+    </div>
+  </details>
+
+  <div class="stats">
+    <div class="stat"><b id="sCorrect">0</b><span>/ <span id="sTotal">0</span> 正解</span></div>
+    <div class="stat"><b id="sRate">–</b><span>正答率</span></div>
+    <div class="stat"><b id="sStreak">0</b><span>連続正解</span></div>
+    <div class="weak" id="weak"></div>
+  </div>
+</div>
+
+<script>
+const NOTE = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+const GROUPS = [
+  { name:"TRIAD", chords:[
+    ["", [0,4,7]], ["m", [0,3,7]], ["dim", [0,3,6]], ["aug", [0,4,8]],
+    ["sus4", [0,5,7]], ["sus2", [0,2,7]],
+  ]},
+  { name:"7TH", chords:[
+    ["maj7", [0,4,7,11]], ["7", [0,4,7,10]], ["m7", [0,3,7,10]],
+    ["mM7", [0,3,7,11]], ["m7b5", [0,3,6,10]], ["dim7", [0,3,6,9]],
+    ["6", [0,4,7,9]], ["m6", [0,3,7,9]], ["7sus4", [0,5,7,10]],
+  ]},
+  { name:"TENSION", chords:[
+    ["add9", [0,4,7,14]], ["maj9", [0,4,11,14]], ["9", [0,4,10,14]],
+    ["m9", [0,3,10,14]], ["7b9", [0,4,10,13]], ["7#9", [0,4,10,15]],
+    ["7#11", [0,4,10,18]], ["7b13", [0,4,10,20]], ["maj7#11",[0,4,11,18]],
+  ]},
+];
+const ALL = Object.fromEntries(GROUPS.flatMap(g=>g.chords));
+const DEFAULT_ON = ["","m","dim","aug","maj7","7","m7","m7b5"];
+
+let enabled = new Set(DEFAULT_ON);
+let cur = null, answered = false, pickedRoot = null;
+let total=0, correct=0, streak=0;
+const miss = {}; // "quality" -> count
+
+/* ---------- audio ---------- */
+let ac=null;
+const freq = m => 440 * Math.pow(2, (m-69)/12);
+
+function tone(midi, at, dur){
+  const t0 = ac.currentTime + at;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.16, t0+0.012);
+  g.gain.exponentialRampToValueAtTime(0.06, t0+0.35);
+  g.gain.exponentialRampToValueAtTime(0.0008, t0+dur);
+  g.connect(ac.destination);
+  [[1,1],[2,0.28],[3,0.12],[4,0.05]].forEach(([h,amp])=>{
+    const o = ac.createOscillator();
+    o.type = h===1 ? "triangle" : "sine";
+    o.frequency.value = freq(midi)*h;
+    const hg = ac.createGain(); hg.gain.value = amp;
+    o.connect(hg); hg.connect(g);
+    o.start(t0); o.stop(t0+dur+0.05);
+  });
+}
+function playNotes(notes, mode){
+  if(!ac) ac = new (window.AudioContext||window.webkitAudioContext)();
+  if(ac.state==="suspended") ac.resume();
+  const step = mode==="arp" ? 0.22 : 0;
+  notes.forEach((n,i)=> tone(n, i*step, mode==="arp" ? 2.6 - i*step : 2.4));
+}
+function play(mode){
+  if(!cur) return;
+  playNotes(cur.notes, mode);
+}
+
+/* ---------- keyboard render ---------- */
+const LOW=48, HIGH=84; // C3..C6
+const kb = document.getElementById("kb");
+function drawKeys(active=[], root=null){
+  const whites=[]; for(let m=LOW;m<=HIGH;m++) if(![1,3,6,8,10].includes(m%12)) whites.push(m);
+  const w = 1050/whites.length, h=104;
+  let html="";
+  whites.forEach((m,i)=>{
+    const cls = m===root?"w root":active.includes(m)?"w on":"w";
+    html += `<rect class="${cls}" x="${i*w}" y="0" width="${w}" height="${h}" rx="2"/>`;
+    if(m%12===0) html += `<text x="${i*w+w/2}" y="${h-6}" text-anchor="middle">C${m/12-1}</text>`;
+  });
+  whites.forEach((m,i)=>{
+    const bm = m+1;
+    if([1,3,6,8,10].includes(bm%12) && bm<=HIGH){
+      const cls = bm===root?"b root":active.includes(bm)?"b on":"b";
+      html += `<rect class="${cls}" x="${i*w+w*0.62}" y="0" width="${w*0.72}" height="${h*0.62}" rx="2"/>`;
+    }
+  });
+  kb.innerHTML = html;
+}
+
+/* ---------- quiz ---------- */
+function newQuestion(){
+  const pool = [...enabled];
+  if(!pool.length) return;
+  const q = pool[Math.floor(Math.random()*pool.length)];
+  const root = document.getElementById("fixedRoot").checked ? 60 : 55 + Math.floor(Math.random()*12);
+  cur = { q, root, notes: ALL[q].map(iv=>root+iv) };
+  answered = false; pickedRoot = null;
+
+  const qm = document.getElementById("quiz").value;
+  document.getElementById("rootPick").style.display = qm==="full" ? "" : "none";
+  document.getElementById("rootBadge").firstChild.textContent = qm==="full" ? "?" : NOTE[root%12];
+  document.getElementById("verdict").textContent = "";
+  document.getElementById("verdict").className = "verdict";
+  document.getElementById("nextBtn").disabled = true;
+  drawKeys();
+  renderAnswers(); renderRoots();
+
+  const m = document.getElementById("mode").value;
+  play(m==="both" ? (Math.random()<0.5?"block":"arp") : m);
+}
+
+function judge(pickQ){
+  if(answered || !cur) return;
+  const qm = document.getElementById("quiz").value;
+  if(qm==="full" && pickedRoot===null){
+    document.getElementById("verdict").innerHTML = '<span class="note">先にルートを選んで</span>';
+    return;
+  }
+  answered = true;
+  const okQ = pickQ === cur.q;
+  const okR = qm==="full" ? pickedRoot === cur.root%12 : true;
+  const ok = okQ && okR;
+
+  total++; if(ok){ correct++; streak++; } else { streak=0; miss[cur.q]=(miss[cur.q]||0)+1; }
+
+  const name = NOTE[cur.root%12] + cur.q;
+  const v = document.getElementById("verdict");
+  v.className = "verdict " + (ok?"ok":"ng");
+  v.innerHTML = ok
+    ? `${name} ✓<span class="note">${cur.notes.map(n=>NOTE[n%12]).join(" – ")}</span>`
+    : `${name} ✗<span class="note">${cur.notes.map(n=>NOTE[n%12]).join(" – ")}　あなたの回答: ${qm==="full"?NOTE[pickedRoot]:NOTE[cur.root%12]}${pickQ}</span>`;
+
+  document.getElementById("rootBadge").firstChild.textContent = NOTE[cur.root%12];
+  drawKeys(cur.notes, cur.root);
+  document.querySelectorAll("#answers button").forEach(b=>{
+    if(b.dataset.q===cur.q) b.classList.add("correct");
+    else if(b.dataset.q===pickQ) b.classList.add("wrong");
+  });
+  document.getElementById("nextBtn").disabled = false;
+  document.getElementById("nextBtn").focus();
+
+  // 答え合わせ後：選択肢を試聴ボタンに切り替え（正解・誤答を鳴らし比べ）
+  document.querySelectorAll("#answers button").forEach(b=>{
+    b.onclick = ()=>auditionQuality(b.dataset.q);
+  });
+  document.getElementById("answers").classList.add("audition");
+  updateStats();
+}
+
+function auditionQuality(q){
+  if(!cur) return;
+  const notes = ALL[q].map(iv => cur.root + iv);
+  const m = document.getElementById("mode").value;
+  const mode = m==="arp" ? "arp" : "block";
+  playNotes(notes, mode);
+  drawKeys(notes, cur.root);
+  // どのボタンを今鳴らしているか
+  document.querySelectorAll("#answers button").forEach(b=>b.classList.toggle("playing", b.dataset.q===q));
+}
+
+function renderAnswers(){
+  const el = document.getElementById("answers");
+  el.classList.remove("audition");
+  el.innerHTML = "";
+  [...enabled].forEach(q=>{
+    const b = document.createElement("button");
+    b.textContent = q===""?"major":q;
+    b.dataset.q = q;
+    b.onclick = ()=>judge(q);
+    el.appendChild(b);
+  });
+}
+function renderRoots(){
+  const el = document.getElementById("roots");
+  el.innerHTML = "";
+  NOTE.forEach((n,i)=>{
+    const b = document.createElement("button");
+    b.textContent = n;
+    b.onclick = ()=>{ if(answered) return; pickedRoot=i;
+      [...el.children].forEach(c=>c.classList.remove("sel")); b.classList.add("sel"); };
+    el.appendChild(b);
+  });
+}
+function updateStats(){
+  document.getElementById("sCorrect").textContent = correct;
+  document.getElementById("sTotal").textContent = total;
+  document.getElementById("sRate").textContent = total? Math.round(correct/total*100)+"%" : "–";
+  document.getElementById("sStreak").textContent = streak;
+  const worst = Object.entries(miss).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  document.getElementById("weak").innerHTML = worst.length
+    ? "苦手: " + worst.map(([q,c])=>`<em>${q===""?"major":q}</em>×${c}`).join("  ")
+    : "";
+}
+
+/* ---------- settings ---------- */
+function renderGroups(){
+  const wrap = document.getElementById("groups");
+  wrap.innerHTML = "";
+  GROUPS.forEach(g=>{
+    const d = document.createElement("div"); d.className="group";
+    const h = document.createElement("h3"); h.textContent = g.name;
+    const all = document.createElement("button"); all.textContent="全部";
+    all.onclick = ()=>{ g.chords.forEach(([q])=>enabled.add(q)); renderGroups(); renderAnswers(); };
+    const none = document.createElement("button"); none.textContent="解除";
+    none.onclick = ()=>{ g.chords.forEach(([q])=>enabled.delete(q)); renderGroups(); renderAnswers(); };
+    h.append(all,none); d.appendChild(h);
+    const chips = document.createElement("div"); chips.className="chips";
+    g.chords.forEach(([q])=>{
+      const c = document.createElement("div");
+      c.className = "chip"+(enabled.has(q)?" on":"");
+      c.textContent = q===""?"major":q;
+      c.onclick = ()=>{
+        if(enabled.has(q)){ if(enabled.size<=2) return; enabled.delete(q); } else enabled.add(q);
+        renderGroups(); renderAnswers();
+      };
+      chips.appendChild(c);
+    });
+    d.appendChild(chips); wrap.appendChild(d);
+  });
+}
+
+/* ---------- wiring ---------- */
+document.getElementById("playBtn").onclick = ()=>{
+  if(!cur) newQuestion(); else play(document.getElementById("mode").value==="arp"?"arp":"block");
+};
+document.getElementById("arpBtn").onclick = ()=>play("arp");
+const lockBtn = document.getElementById("rootLockBtn");
+const fixedRoot = document.getElementById("fixedRoot");
+lockBtn.onclick = ()=>{
+  fixedRoot.checked = !fixedRoot.checked;
+  lockBtn.textContent = fixedRoot.checked ? "ルート: C 固定" : "ルート: ランダム";
+  lockBtn.classList.toggle("primary", fixedRoot.checked);
+  newQuestion();
+};
+document.getElementById("nextBtn").onclick = newQuestion;
+document.getElementById("quiz").onchange = ()=>{ if(cur) newQuestion(); };
+document.addEventListener("keydown", e=>{
+  if(e.target.tagName==="SELECT") return;
+  if(e.code==="Space"){ e.preventDefault(); document.getElementById("playBtn").click(); }
+  if(e.code==="Enter" && !document.getElementById("nextBtn").disabled){ e.preventDefault(); newQuestion(); }
+});
+
+renderGroups(); renderAnswers(); renderRoots(); drawKeys(); updateStats();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=> navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+
+</body>
+</html>
